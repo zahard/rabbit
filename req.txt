@@ -1,0 +1,6 @@
+
+
+1. Canvas should be able to scale with window size, across modern browsers, on both desktop and mobile devices.
+ Correct canvas on each resize action to keep right ratio
+
+2. There should be a "fullscreen"  and "exit fullscreen" option. 
