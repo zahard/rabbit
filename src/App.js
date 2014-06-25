@@ -1,12 +1,20 @@
+
 window.onload = function()
 {
 	window.game = new Game(960,640);
+
+	//Fix android browsers bug
+	setTimeout(function(){
+		game.onResize();	
+	},100)
 }
 
 function Game(width, height)
 {
 	this.width = width;
 	this.height = height;
+
+	this.wrapper = $('wrapper');
 
 	this.layers = {
 		back:   new Layer( $('back'), width, height, 1),
@@ -15,6 +23,7 @@ function Game(width, height)
 		carrot: new Layer( $('carrot'), width, height, 4),
 		rabbit: new Layer( $('rabbit'), width, height, 5),
 		score: new Layer( $('score'), width, height, 3),
+		button: new Layer( $('button'), width, height, 3),
 	};
 	
 	this.tiles = {
@@ -36,9 +45,16 @@ function Game(width, height)
 
 	this.addListeners();
 
+	if( ! this.isFullScreenSupported() )
+	{
+		this.layers.button.hide();
+	}
+
 	this.drawBackground();
 
 	this.animate();
+
+	this.onResize();
 }
 
 Game.prototype = {
@@ -126,6 +142,10 @@ Game.prototype = {
 
 	scoresPerLevel: 10,
 
+	MOUSE_HOLDED: false,
+
+	fullScreenEnabled: false,
+
 	loadLevel: function(levelNum)
 	{	
 		if( typeof levelNum != 'undefined' )
@@ -188,6 +208,8 @@ Game.prototype = {
 			this.tiles.back.width,this.tiles.back.height,
 			0,0,
 			this.width, this.height);
+
+		this.drawButton();
 	},
 
 	drawScale: function()
@@ -236,6 +258,29 @@ Game.prototype = {
 				this.drawNumber(numbers[n], x, y);
 			}
 		}
+
+	},
+
+	drawButton: function()
+	{
+		this.layers.button.empty();
+
+		this.layers.button.setProperties({
+			fillStyle: 'orange',
+			strokeStyle: '#fff',
+			font: 'bold 20px Arial',
+		});
+
+		this.layers.button.fillRect(380,10,180,40);
+		this.layers.button.strokeRect(380,10,180,40);
+
+		this.layers.button.setProperties({
+			fillStyle: '#777',
+		});
+
+		var text = 'Fullscreen Mode';
+		
+		this.layers.button.fillText(text, 392, 35);
 
 	},
 
@@ -355,29 +400,33 @@ Game.prototype = {
 
 	addListeners: function()
 	{	
-		this.offsetTop = $('wrapper').offsetTop;
-		this.offsetLeft = $('wrapper').offsetLeft;
-
-		$('wrapper').addEventListener('mousedown',function(e) {
+		
+		this.wrapper.addEventListener('mousedown',function(e) {
 			this.updateActivePoint(e);
 			if ( this.fetchCarrot(this.activePoint.x, this.activePoint.y) )
 			{
 				this.MOUSE_HOLDED = true;
 			}
-			
+
+			//Fullscren button click
+			if (this.isFullscreenPressed())
+			{
+				this.toggleFullscreen();
+			}
 		}.bind(this));
 
-		$('wrapper').addEventListener('mousemove',function(e){
+		this.wrapper.addEventListener('mousemove',function(e){
 			this.updateActivePoint(e);
 		}.bind(this));
 
-		$('wrapper').addEventListener('mouseup',function(e){
+		this.wrapper.addEventListener('mouseup',function(e){
 			this.MOUSE_HOLDED = false;
 			this.onCarrotMoved();
 		}.bind(this));
 
 		//Touch events
-		$('wrapper').addEventListener('touchstart',function(e) {
+		this.wrapper.addEventListener('touchstart',function(e) {
+
 			this.updateActivePoint(e.touches[0]);
 			if ( this.fetchCarrot(this.activePoint.x, this.activePoint.y) )
 			{
@@ -385,16 +434,17 @@ Game.prototype = {
 			}
 		}.bind(this));
 
-		$('wrapper').addEventListener('touchmove',function(e){
-			this.updateActivePoint(e.touches[0]);			
+		this.wrapper.addEventListener('touchmove',function(e){
+			e.preventDefault();
+			this.updateActivePoint(e.touches[0]);
 		}.bind(this));
 
-		$('wrapper').addEventListener('touchend',function(e){
+		this.wrapper.addEventListener('touchend',function(e){
 			this.MOUSE_HOLDED = false;
 			this.onCarrotMoved();
 		}.bind(this));
 
-		$('wrapper').addEventListener('touchcancel',function(e){
+		this.wrapper.addEventListener('touchcancel',function(e){
 			this.MOUSE_HOLDED = false;
 			this.onCarrotMoved();
 		}.bind(this));
@@ -407,13 +457,78 @@ Game.prototype = {
 		window.addEventListener('orientationchange', function(){
 			this.onResize();
 		}.bind(this), false);
+
+		//Fullscren button click
+		this.wrapper.addEventListener('click',function(e){
+			
+		}.bind(this));
+
+	},
+
+	isFullscreenPressed: function()
+	{
+		var x = this.activePoint.x;
+		var y = this.activePoint.y;
+		return ( x >= 380 && x <= 560 && y >= 10 && y <= 50);
+	},
+
+	toggleFullscreen: function()
+	{
+		if(this.fullScreenEnabled)
+		{
+			this.fullScreenCancel();
+			this.fullScreenEnabled = false;
+		}
+		else
+		{
+			this.fullScreen(this.wrapper);
+			this.fullScreenEnabled = true;
+		}
+
+		this.drawButton();
+	},
+
+	fullScreen: function (el) 
+	{ 
+		if (el.webkitRequestFullScreen)
+		{
+			el.webkitRequestFullScreen();
+		}
+		else
+		{
+			el.mozRequestFullScreen();
+  		}
+  		this.onResize();
+	},
+
+	fullScreenCancel: 	function() 
+	{ 
+		if (document.webkitCancelFullScreen())
+		{ 
+			document.webkitCancelFullScreen()(); 
+		} 
+		else if (document.mozCancelFullscreen ) 
+		{ 
+			document.mozCancelFullscreen(); 
+		}
+		this.onResize();
+	},
+
+	isFullScreenSupported: function()
+	{
+		var el  = this.wrapper;
+		if( el.webkitRequestFullScreen || el.mozRequestFullScreen)
+		{
+			return true;
+		}
+		return false;
 	},
 
 	updateActivePoint: function(e)
 	{
 		//Calculate ratio to allow resize canvas and keep track right mouse position related canvas
-		var ratioX = $('wrapper').clientWidth / 960;
-		var ratioY = $('wrapper').clientHeight / 640;
+		var ratioX = this.wrapper.clientWidth / 960;
+		var ratioY = this.wrapper.clientHeight / 640;
 		this.activePoint.x =  Math.floor( (e.pageX - this.offsetLeft) / ratioX);
 		this.activePoint.y =  Math.floor( (e.pageY - this.offsetTop)  / ratioY);
 
@@ -421,6 +536,33 @@ Game.prototype = {
 
 	onResize: function()
 	{
+
+		console.log('OnREsize')
+
+		var widthToHeight = 3/2;
+		var newWidth = window.innerWidth;
+		var newHeight = window.innerHeight;
+
+		console.log( newHeight );
+		console.log( newWidth );
+
+		var newWidthToHeight = newWidth / newHeight;
+
+		if (newWidthToHeight > widthToHeight) {
+			newWidth = newHeight * widthToHeight;
+			this.wrapper.style.height = newHeight + 'px';
+			this.wrapper.style.width = newWidth + 'px';
+		} else {
+			newHeight = newWidth / widthToHeight;
+			this.wrapper.style.width = newWidth + 'px';
+			this.wrapper.style.height = newHeight + 'px';
+		}
+
+		this.wrapper.style.marginTop = (-newHeight / 2) + 'px';
+		this.wrapper.style.marginLeft = (-newWidth / 2) + 'px';
+
+		this.offsetTop = this.wrapper.offsetTop;
+		this.offsetLeft = this.wrapper.offsetLeft;
 
 	},
 
@@ -530,8 +672,6 @@ Game.prototype = {
 		this.carrot.x = this.carrotStartPoint.x;
 		this.carrot.y = this.carrotStartPoint.y;
 	},
-
-	
 
 	loadRange: function(range)
 	{

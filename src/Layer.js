@@ -28,6 +28,10 @@ Layer.prototype.empty = function() {
 	this.cxt.clearRect(0,0,this.width, this.height);
 }
 
+Layer.prototype.hide = function() {
+	this.cnv.style.display = 'none';
+}
+
 
 /**
 * Required for using in chaining
