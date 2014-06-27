@@ -624,10 +624,10 @@ Game.prototype = {
 	{
 		this.resetCarrotPosition();
 		this.drawCarrot();
+        this.rabbitLoseAnimation();
 		this.sounds.win.pause();
-		this.sounds.lose.currentTime = 0;;
+		this.sounds.lose.currentTime = 0;
 		this.sounds.lose.play();
-		this.rabbitLoseAnimation();
 	},
 
 	rabbitLoseAnimation: function()
